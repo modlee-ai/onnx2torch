@@ -37,7 +37,8 @@ class OnnxBinaryMathOperation(nn.Module, OnnxToTorchModule):  # pylint: disable=
 
         self.broadcast = broadcast
         self.axis = axis
-        self.math_op_function = _TORCH_FUNCTION_FROM_ONNX_TYPE[operation_type]
+        self.operation_type = operation_type
+        self.math_op_function = _TORCH_FUNCTION_FROM_ONNX_TYPE[self.operation_type]
 
     def forward(  # pylint: disable=missing-function-docstring
         self,
