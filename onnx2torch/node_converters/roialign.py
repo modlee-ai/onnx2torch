@@ -50,15 +50,22 @@ class OnnxRoiAlign(nn.Module, OnnxToTorchModuleWithCustomExport):  # pylint: dis
         super().__init__()
 
         self._coordinate_transformation_mode = coordinate_transformation_mode
+        self.coordinate_transformation_mode = coordinate_transformation_mode
 
         if mode != 'avg':
             raise NotImplementedError(f'"{mode}" roi align mode is not implemented.')
         self._mode = mode
+        self.mode = mode
 
         self._output_height = output_height
         self._output_width = output_width
         self._sampling_ratio = sampling_ratio
         self._spatial_scale = spatial_scale
+        
+        self.output_height = output_height
+        self.output_width = output_width
+        self.sampling_ratio = sampling_ratio
+        self.spatial_scale = spatial_scale
 
     def _onnx_attrs(self, opset_version: int) -> Dict[str, Any]:
         onnx_attrs: Dict[str, Any] = {

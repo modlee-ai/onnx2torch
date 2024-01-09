@@ -41,6 +41,7 @@ class OnnxScatterND(nn.Module, OnnxToTorchModuleWithCustomExport):  # pylint: di
         if reduction != ReductionOnnxAttr.NONE:
             raise NotImplementedError(f'ScatterND with reduction attribute "{reduction.value}" is not implemented')
 
+        self.reduction = reduction
         self._reduction = reduction
 
     def _onnx_attrs(self, opset_version: int) -> Dict[str, Any]:

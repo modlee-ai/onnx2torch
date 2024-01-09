@@ -40,6 +40,7 @@ class OnnxNot(nn.Module, OnnxToTorchModuleWithCustomExport):
 class OnnxLogical(nn.Module, OnnxToTorchModule):
     def __init__(self, operation_type: str, broadcast: Optional[int] = None, axis: Optional[int] = None):
         super().__init__()
+        self.operation_type = operation_type
         self.broadcast = broadcast
         self.axis = axis
 

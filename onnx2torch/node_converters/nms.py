@@ -24,6 +24,7 @@ from onnx2torch.utils.custom_export_to_onnx import OnnxToTorchModuleWithCustomEx
 class OnnxNonMaxSuppression(nn.Module, OnnxToTorchModuleWithCustomExport):
     def __init__(self, center_point_box: int = 0):
         super().__init__()
+        self.center_point_box = center_point_box
         self._center_point_box = center_point_box
 
     def _onnx_attrs(self, opset_version: int) -> Dict[str, Any]:

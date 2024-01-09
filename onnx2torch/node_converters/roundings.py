@@ -22,6 +22,7 @@ _TORCH_ROUND_FROM_ONNX_TYPE = {
 class OnnxRound(nn.Module, OnnxToTorchModule):  # pylint: disable=missing-class-docstring
     def __init__(self, round_type: str):
         super().__init__()
+        self.round_type = round_type
         self.round_function = _TORCH_ROUND_FROM_ONNX_TYPE[round_type]
 
     def forward(self, input_tensor: torch.Tensor):  # pylint: disable=missing-function-docstring

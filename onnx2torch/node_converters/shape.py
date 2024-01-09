@@ -22,6 +22,8 @@ from onnx2torch.utils.custom_export_to_onnx import OnnxToTorchModuleWithCustomEx
 class OnnxShape(nn.Module, OnnxToTorchModuleWithCustomExport):  # pylint: disable=missing-class-docstring
     def __init__(self, start: int = 0, end: Optional[int] = None):
         super().__init__()
+        self.start = start
+        self.end = end
         self._start = start
         self._end = end
 

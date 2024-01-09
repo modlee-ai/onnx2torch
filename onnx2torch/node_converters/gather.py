@@ -81,6 +81,7 @@ class OnnxGatherND(nn.Module, OnnxToTorchModuleWithCustomExport):
 
     def __init__(self, batch_dims: int = 0):
         super().__init__()
+        self.batch_dims = batch_dims
         self._batch_dims: int = batch_dims
 
     def _onnx_attrs(self, opset_version: int) -> Dict[str, Any]:

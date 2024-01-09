@@ -34,7 +34,7 @@ _TORCH_FUNCTION_FROM_ONNX_TYPE = {
 class OnnxBinaryMathOperation(nn.Module, OnnxToTorchModule):  # pylint: disable=missing-docstring
     def __init__(self, operation_type: str, broadcast: Optional[int] = None, axis: Optional[int] = None):
         super().__init__()
-
+        self.operation_type = operation_type
         self.broadcast = broadcast
         self.axis = axis
         self.operation_type = operation_type

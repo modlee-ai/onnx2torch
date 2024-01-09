@@ -14,6 +14,7 @@ from onnx2torch.utils.common import onnx_mapping_from_node
 class OnnxDepthToSpace(nn.Module, OnnxToTorchModule):  # pylint: disable=missing-docstring
     def __init__(self, blocksize: int):
         super().__init__()
+        self.blocksize = blocksize
         self._upscale_factor = blocksize
 
     def forward(self, input_tensor: torch.Tensor) -> torch.Tensor:  # pylint: disable=missing-function-docstring

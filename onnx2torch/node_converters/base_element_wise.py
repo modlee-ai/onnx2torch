@@ -9,6 +9,7 @@ from onnx2torch.utils.custom_export_to_onnx import OnnxToTorchModuleWithCustomEx
 class OnnxBaseElementWise(nn.Module, OnnxToTorchModuleWithCustomExport):
     def __init__(self, op_type: str):
         super().__init__()
+        self.op_type = op_type
         self._op_type = op_type
 
     @staticmethod
