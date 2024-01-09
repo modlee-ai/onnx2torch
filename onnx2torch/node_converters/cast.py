@@ -35,6 +35,7 @@ class OnnxCast(nn.Module, OnnxToTorchModule):  # pylint: disable=missing-docstri
         super().__init__()
         try:
             self.torch_dtype = TENSOR_TYPE_TO_TORCH_TYPE[onnx_dtype]
+            self.onnx_dtype = onnx_dtype
         except KeyError as exc:
             raise NotImplementedError(f'Conversion to "{onnx_dtype}" is not implemented') from exc
 

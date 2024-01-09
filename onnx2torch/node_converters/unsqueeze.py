@@ -24,6 +24,7 @@ class OnnxUnsqueezeStaticAxes(nn.Module, OnnxToTorchModule):  # pylint: disable=
     def __init__(self, axes: List[int]):
         super().__init__()
         self._axes = sorted(axes)
+        self.axes = self._axes
 
     def forward(self, input_tensor: torch.Tensor) -> torch.Tensor:  # pylint: disable=missing-function-docstring
         result = input_tensor

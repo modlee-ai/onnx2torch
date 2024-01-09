@@ -50,6 +50,7 @@ class OnnxResize(nn.Module, OnnxToTorchModule):  # pylint: disable=missing-class
         ignore_bs_ch_size: bool = False,
     ):
         super().__init__()
+        self.mode = mode
         self.onnx_mode = mode
         self.align_corners = align_corners
         self.ignore_roi = ignore_roi
@@ -99,6 +100,7 @@ class OnnxResize(nn.Module, OnnxToTorchModule):  # pylint: disable=missing-class
 class OnnxResizeV10(nn.Module, OnnxToTorchModule):  # pylint: disable=missing-class-docstring
     def __init__(self, mode: str = 'nearest'):
         super().__init__()
+        self.mode = mode
         self._resize = OnnxResize(mode=mode)
 
     def forward(  # pylint: disable=missing-function-docstring

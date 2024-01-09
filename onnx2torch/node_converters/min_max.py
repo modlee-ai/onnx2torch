@@ -20,6 +20,7 @@ class OnnxMinMax(OnnxBaseElementWise):  # pylint: disable=missing-docstring
 
     def __init__(self, op_type: str):
         super().__init__(op_type=op_type)
+        self.op_type = op_type
         self._operator = self._OPERATORS[op_type]
 
     def apply_reduction(self, *tensors: torch.Tensor) -> torch.Tensor:  # pylint: disable=missing-function-docstring

@@ -94,6 +94,9 @@ class OnnxReduceSumDynamicAxes(  # pylint: disable=missing-class-docstring
         self._keepdims = keepdims
         self._noop_with_empty_axes = noop_with_empty_axes
 
+        self.keepdims = keepdims
+        self.noop_with_empty_axes = noop_with_empty_axes
+
     def _onnx_attrs(self, opset_version: int) -> Dict[str, Any]:
         return {
             'noop_with_empty_axes_i': self._noop_with_empty_axes,
@@ -141,6 +144,9 @@ class OnnxReduceSumStaticAxes(nn.Module, OnnxToTorchModule):  # pylint: disable=
         if axes is not None:
             axes = sorted(axes)
 
+        self.keepdims = keepdims
+        self.noop_with_empty_axes = noop_with_empty_axes
+        self.axes = axes
         self._keepdims = keepdims
         self._noop_with_empty_axes = noop_with_empty_axes
         self._axes = axes

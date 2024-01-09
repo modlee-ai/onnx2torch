@@ -31,6 +31,7 @@ _TORCH_FUNCTION_FROM_ONNX_TYPE = {
 class OnnxFunction(nn.Module, OnnxToTorchModule):  # pylint: disable=missing-docstring
     def __init__(self, function_type: str):
         super().__init__()
+        self.function_type = function_type
         self.function = _TORCH_FUNCTION_FROM_ONNX_TYPE[function_type]
 
     def forward(self, input_tensor: torch.Tensor) -> torch.Tensor:  # pylint: disable=missing-function-docstring

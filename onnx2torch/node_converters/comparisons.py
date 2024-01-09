@@ -25,6 +25,7 @@ class OnnxCompare(nn.Module, OnnxToTorchModule):  # pylint: disable=missing-docs
     def __init__(self, operation_type: str):
         super().__init__()
         self.compare_function = _TORCH_FUNCTION_FROM_ONNX_TYPE[operation_type]
+        self.operation_type = operation_type
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:  # pylint: disable=missing-function-docstring
         return self.compare_function(x, y)
