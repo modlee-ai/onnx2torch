@@ -20,6 +20,9 @@ class OnnxExpand(nn.Module, OnnxToTorchModuleWithCustomExport):  # pylint: disab
         input_tensor: torch.Tensor,
         shape: torch.Tensor,
     ) -> torch.Tensor:
+        if isinstance(shape, torch.Tensor):
+            shape =  shape.to(int).tolist()
+
         def _forward():
             return input_tensor * torch.ones(torch.Size(shape), dtype=input_tensor.dtype, device=input_tensor.device)
 
