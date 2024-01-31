@@ -43,6 +43,7 @@ class OnnxGather(nn.Module, OnnxToTorchModuleWithCustomExport):
 
     def __init__(self, axis: int = 0):
         super().__init__()
+        self.axis = axis
         self._axis = axis
 
     def _onnx_attrs(self, opset_version: int) -> Dict[str, Any]:

@@ -17,7 +17,10 @@ from onnx2torch.utils.custom_export_to_onnx import OnnxToTorchModuleWithCustomEx
 class OnnxReshape(nn.Module, OnnxToTorchModuleWithCustomExport):  # pylint: disable=missing-class-docstring
     @staticmethod
     def _do_reshape(input_tensor: torch.Tensor, shape: torch.Tensor) -> torch.Tensor:
-        if torch.any(shape == 0):
+        has_zero_dim = (shape == 0)
+        if isinstance(has_zero_dim, torch.Tensor):
+            has_zero_dim = torch.any(has_zero_dim)
+        if has_zero_dim:
             shape = [input_tensor.shape[i] if dim_size == 0 else dim_size for i, dim_size in enumerate(shape)]
 
         return torch.reshape(input_tensor, torch.Size(shape))
@@ -29,6 +32,10 @@ class OnnxReshape(nn.Module, OnnxToTorchModuleWithCustomExport):  # pylint: disa
     ) -> torch.Tensor:
         def _forward() -> torch.Tensor:
             return self._do_reshape(input_tensor, shape)
+        if isinstance(shape, torch.Tensor):
+            shape =  shape.to(int).tolist()
+
+        forward_lambda = lambda: self._do_reshape(input_tensor, shape)
 
         if torch.onnx.is_in_onnx_export():
             return DefaultExportToOnnx.export(_forward, 'Reshape', input_tensor, shape, {})
