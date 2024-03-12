@@ -37,15 +37,26 @@ def _get_slices(
     else:
         steps = steps.detach().cpu().numpy()
 
+    def float2int(_x):
+        if isinstance(_x, torch.Tensor):
+            return _x.int()
+        elif 'numpy' in str(type(_x)):
+            return _x.astype(int)
+        else:
+            return _x
+
     slices = {}
     flip_dims = []
     for start, end, axis, step in zip(starts, ends, axes, steps):
         if step < 0:
             flip_dims.append(axis)
             start, end, step = -start - 1, -end - 1, -step
-
+        axis, start, end, step = tuple(
+            map(float2int,
+                (axis, start, end, step)))
         slices[axis] = slice(start, end, step)
 
+    axes = float2int(axes)
     pos_axes_slices = list(slices.get(a, slice(None, None)) for a in range(max(axes) + 1))
     neg_axes_slices = list(slices.get(a, slice(None, None)) for a in range(min(axes), 0))
 
