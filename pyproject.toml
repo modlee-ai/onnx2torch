@@ -1,5 +1,5 @@
 [project]
-name = 'onnx2torch'
+name = 'modlee-onnx2torch'
 version = '1.5.15'
 license = {file = 'LICENSE'}
 description = 'ONNX to PyTorch converter'

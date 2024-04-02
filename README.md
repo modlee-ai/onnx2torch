@@ -31,6 +31,7 @@
     </a>
 </p>
 
+# *Note: This is a fork of the original repository, frozen for compatibility with the [`modlee` package](https://github.com/modlee-ai/modlee).*
 onnx2torch is an ONNX to PyTorch converter.
 Our converter:
 
