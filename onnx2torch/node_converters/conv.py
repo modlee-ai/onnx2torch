@@ -26,10 +26,14 @@ _CONV_CLASS_FROM_SPATIAL_RANK = {
 @add_converter(operation_type='ConvTranspose', version=11)
 def _(node: OnnxNode, graph: OnnxGraph) -> OperationConverterResult:
     weights_value_name = node.input_values[1]
+    if weights_value_name not in graph.initializers:
+        raise Exception(f"Graph does not have weight tensor {weights_value_name}")
     weights = graph.initializers[weights_value_name]
     weights = weights.to_torch()
     if len(node.input_values) == 3:
         bias_value_name = node.input_values[2]
+        if bias_value_name not in graph.initializers:
+            raise Exception(f"Graph does not have bias tensor {bias_value_name}")
         bias = graph.initializers[bias_value_name]
         bias = bias.to_torch()
     else:
