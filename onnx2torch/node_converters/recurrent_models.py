@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-
 from onnx2torch.node_converters.registry import add_converter
 from onnx2torch.onnx_graph import OnnxGraph
 from onnx2torch.onnx_node import OnnxNode
@@ -13,30 +12,31 @@ _RNN_CLASS_FROM_TYPE = {
     'GRU': nn.GRU,
 }
 
-
 class RNNWrapper(nn.Module):
-    def __init__(self, rnn_module, batch_first):
+    def __init__(self, rnn_module, batch_first, bidirectional):
         super(RNNWrapper, self).__init__()
         self.rnn_module = rnn_module
         self.batch_first = batch_first
+        self.bidirectional = bidirectional
 
     def forward(self, input_1, *args):
-        print("Input dim: ", input_1.dim())
+        if not isinstance(input_1, torch.Tensor):
+            raise TypeError(f"Expected input_1 to be a tensor, but got {type(input_1)}")
+
         if self.batch_first:
-            input_1 = input_1.permute(1,0,2)
+            input_1 = input_1.permute(1, 0, 2)
 
         if len(args) == 2:
             hx = args
-            print("Hidden state dims: ", [h.dim() for h in hx])
             output, hidden = self.rnn_module(input_1, hx)
         else:
             output, hidden = self.rnn_module(input_1)
-        print("Output dim: ", output.dim())
+
         if self.batch_first and output.dim() == 3:
-            output = output.permute(1,0,2)
+            output = output.permute(1, 0, 2)
         return output, hidden
 
-@add_converter(operation_type='RNN', version=1)
+
 @add_converter(operation_type='RNN', version=14)
 @add_converter(operation_type='LSTM', version=14)
 @add_converter(operation_type='GRU', version=14)
@@ -44,14 +44,7 @@ def _(node: OnnxNode, graph: OnnxGraph) -> OperationConverterResult:
     rnn_type = node.operation_type
     weights_ih_name = node.input_values[1]
     weights_hh_name = node.input_values[2]
-    #print("Nodes: ", node.input_values)
-    #print("Shape: ", [n for n in node.input_values])
-    #breakpoint()
-    '''
-    step 1 verify the inputs and input shapes
-    step 2 which of the inputs need to be passed & in what order to torch code to make it run
     
-    '''
     if weights_ih_name not in graph.initializers or weights_hh_name not in graph.initializers:
         raise Exception(f"Graph does not have necessary weight tensors for {rnn_type}")
 
@@ -75,27 +68,44 @@ def _(node: OnnxNode, graph: OnnxGraph) -> OperationConverterResult:
         else:
             print(f"Warning: Bias tensor {bias_hh_name} not found in graph initializers.")
 
-    # Fetch model attributes
-    node_attributes = node.attributes
-    input_size = node_attributes.get('input_size')
-    hidden_size = node_attributes.get('hidden_size')
-    num_layers = node_attributes.get('num_layers', 1)
-    bidirectional = node_attributes.get('direction', 'forward') == 'bidirectional'
-    dropout = node_attributes.get('dropout', 0.0)
-    batch_first = node_attributes.get('batch_first', False)
-
-    # If input_size is not set, derive it from the input tensor shape
-    if input_size is None:
+    # Fetch attributes from the node or infer them
+    input_size = node.attributes.get('input_size')
+    print(f"Input Size: {input_size}")
+    breakpoint()
+    if input_size is None and node.input_values:
+        # Infer input size from the first input tensor (only once)
         input_name = node.input_values[0]
-        input_tensor = graph.value_info[input_name]
-        input_size = input_tensor.type.tensor_type.shape.dim[-1].dim_value
+        input_tensor = graph.value_info.get(input_name, None)
+        if input_tensor:
+            input_size = input_tensor.type.tensor_type.shape.dim[-1].dim_value
 
+    hidden_size = node.attributes.get('hidden_size')
+    num_layers = node.attributes.get('num_layers', 1)
+    direction = node.attributes.get('direction', 'forward')
+    dropout = node.attributes.get('dropout', 0.0)
+    batch_first = node.attributes.get('batch_first', False)
+
+    # Extract the hidden state shape from the output to infer additional attributes
+    hidden_state_shape = [dim.dim_value for dim in graph.proto.output[1].type.tensor_type.shape.dim]
+    is_bidirectional = direction == 'bidirectional'
+    num_layers_inferred = hidden_state_shape[0] // (2 if is_bidirectional else 1)
+
+    # Use inferred values if the attributes are missing
+    num_layers = num_layers or num_layers_inferred
+
+    # Infer batch_first from shape if necessary
+    batch_size = hidden_state_shape[1] if len(hidden_state_shape) > 1 else None
+    batch_first_inferred = hidden_state_shape[1] == batch_size if batch_size else False
+    batch_first = batch_first if batch_first is not None else batch_first_inferred
+
+    # Only print once after all attributes are inferred
     print(f"Attributes of {rnn_type} RNN:")
     print(f"Input Size: {input_size}")
     print(f"Hidden Size: {hidden_size}")
     print(f"Num Layers: {num_layers}")
-    print(f"Bidirectional: {bidirectional}")
+    print(f"Bidirectional: {is_bidirectional}")
     print(f"Dropout: {dropout}")
+    print(f"Batch First: {batch_first}")
 
     if input_size is None or hidden_size is None:
         raise ValueError(f"Invalid RNN configuration: input_size and hidden_size must be defined (got input_size={input_size}, hidden_size={hidden_size})")
@@ -112,9 +122,9 @@ def _(node: OnnxNode, graph: OnnxGraph) -> OperationConverterResult:
         bias=True,
         batch_first=batch_first,
         dropout=dropout,
-        bidirectional=bidirectional,
+        bidirectional=is_bidirectional,
     )
-    torch_module = RNNWrapper(torch_module, batch_first)
+    torch_module = RNNWrapper(torch_module, batch_first, is_bidirectional)
     with torch.no_grad():
         torch_module.weight_ih_l0 = weights_ih
         torch_module.weight_hh_l0 = weights_hh
