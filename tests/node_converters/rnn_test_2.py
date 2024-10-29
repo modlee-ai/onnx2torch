@@ -51,6 +51,7 @@ for node in onnx_model.graph.node:
     node_direction = next((attr.s for attr in node.attribute if attr.name == 'direction'), None)
     dropout = next((attr.f for attr in node.attribute if attr.name == 'dropout'), None)
     batch_first = next((attr.i for attr in node.attribute if attr.name == 'batch_first'), None)
+    print("Batch_firs found to be: ", batch_first)
     
     if num_layers is not None:
         print(f"Node {node.name}: num_layers = {num_layers}")
@@ -75,3 +76,16 @@ else:
 print(f"Inferred num_layers: {num_layers_inferred}")
 print(f"Inferred bidirectional: {is_bidirectional}")
 print(f"Inferred batch_first: {batch_first}")
+
+
+'''
+Input input: shape = [10, 5, 5]
+Output output: shape = [10, 5, 2]
+Output hidden: shape = [3, 10, 2]
+
+Input input: shape = [10, 5, 5]
+Input input: shape = [10, 5, 5]
+Output output: shape = [10, 5, 2]
+Output hidden: shape = [3, 5, 2]
+
+'''

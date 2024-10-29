@@ -41,10 +41,10 @@ torch.device('cpu')
 class testModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.rnn = torch.nn.RNN(
-            input_size=15,
-            hidden_size=4,
-            num_layers=1,
+        self.rnn = torch.nn.LSTM(
+            input_size=5,
+            hidden_size=2,
+            num_layers=3,
             bias=True,
             batch_first=False,
             dropout=0.5,
@@ -56,61 +56,22 @@ class testModel(torch.nn.Module):
 
 
 '''
-for 2 num layers
+This is with bidirectional false:
 
- {'_proto': input: "input"
-input: "onnx::RNN_57"
-input: "onnx::RNN_58"
-input: "onnx::RNN_59"
-input: ""
-input: "/rnn/Slice_output_0"
-output: "/rnn/RNN_output_0"
-output: "/rnn/RNN_output_1"
-name: "/rnn/RNN"
-op_type: "RNN"
-attribute {
-  name: "activations"
-  strings: "Tanh"
-  type: STRINGS
-}
-attribute {
-  name: "hidden_size"
-  i: 5
-  type: INT
-}
-, '_unique_name': 'rnn/RNN', '_input_values': ('input', 'onnx::RNN_57', 'onnx::RNN_58', 'onnx::RNN_59', '', '/rnn/Slice_output_0'), '_output_values': ('/rnn/RNN_output_0', '/rnn/RNN_output_1'), '_inputs': None, '_proto_attributes': {'activations': ['Tanh'], 'hidden_size': 5}}
-'''
+Initial input shape: torch.Size([10, 5, 5])
+RNN Attributes - Input size: 5, Hidden size: 2, Num layers: 3, Bidirectional: False, Batch first: False, Dropout: 0.0
+Output shape before any reshaping: torch.Size([10, 5, 2])
+Hidden state shapes: [torch.Size([5, 2]), torch.Size([5, 2]), torch.Size([5, 2])]
 
-'''
-for 3 layers
 
-Input 1:  torch.Size([1, 5, 3])
-Input 2:  torch.Size([1, 5, 5])
-Input 3:  torch.Size([1, 10])
+Initial input shape: torch.Size([10, 5, 5])
+RNN Attributes - Input size: 5, Hidden size: 2, Num layers: 3, Bidirectional: True, Batch first: False, Dropout: 0.0
+Output shape before any reshaping: torch.Size([10, 5, 4])
+Hidden state shapes: [torch.Size([5, 2]), torch.Size([5, 2]), torch.Size([5, 2]), torch.Size([5, 2]), torch.Size([5, 2]), torch.Size([5, 2])]
+Output reshaped for bidirectional: torch.Size([10, 5, 2, 2])
+Output after summing directions: torch.Size([10, 5, 2])
+Traceback (most recent call last):
 
-####################
-
-{'_proto': input: "input"
-input: "onnx::RNN_76"
-input: "onnx::RNN_77"
-input: "onnx::RNN_78"
-input: ""
-input: "/rnn/Slice_output_0"
-output: "/rnn/RNN_output_0"
-output: "/rnn/RNN_output_1"
-name: "/rnn/RNN"
-op_type: "RNN"
-attribute {
-  name: "activations"
-  strings: "Tanh"
-  type: STRINGS
-}
-attribute {
-  name: "hidden_size"
-  i: 5
-  type: INT
-}
-, '_unique_name': 'rnn/RNN', '_input_values': ('input', 'onnx::RNN_76', 'onnx::RNN_77', 'onnx::RNN_78', '', '/rnn/Slice_output_0'), '_output_values': ('/rnn/RNN_output_0', '/rnn/RNN_output_1'), '_inputs': None, '_proto_attributes': {'activations': ['Tanh'], 'hidden_size': 5}}
 '''
 
 
@@ -118,7 +79,7 @@ rnn = testModel()
 rnn.eval()
 
 
-dummy_input = torch.randn(10, 5, 15)
+dummy_input = torch.randn(10, 5, 5)
 
 # Ensure dummy_input is a tensor
 if not isinstance(dummy_input, torch.Tensor):
@@ -171,7 +132,7 @@ output, hidden = rnn.forward(dummy_input)
 state_dict = rnn.state_dict()
 for name, tensor in state_dict.items():
     print(f"{name}: {tensor.shape}")
-#breakpoint()
+# breakpoint()
 
 import onnxruntime
 try:
@@ -190,12 +151,12 @@ except AssertionError as e:
     
     torch_output = rnn.forward(dummy_input)[0].detach().numpy()
     
-    print("ORT output:", ort_outputs)
-    print("Torch output:", torch_output)
+    # print("ORT output:", ort_outputs)
+    # print("Torch output:", torch_output)
     
     # Print the differences
-    for ort_output, torch_out in zip(ort_outputs, torch_output):
-        print("Difference:", np.abs(ort_output - torch_out))
+    # for ort_output, torch_out in zip(ort_outputs, torch_output):
+    #     print("Difference:", np.abs(ort_output - torch_out))
 
 '''
 1) get torch model as code

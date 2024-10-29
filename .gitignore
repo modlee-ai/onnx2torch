@@ -133,3 +133,4 @@ trash*
 *.onnx
 
 tests/.tmp
+rnnModel.py
