@@ -2,26 +2,25 @@ import torch
 import onnx
 import numpy as np
 from onnx2torch import convert
-from torch.fx import symbolic_trace
-
+from utils.common import check_onnx_model
 
 ### we define the RNN model in torch 
 # rnn = torch.nn.RNN(
-#     input_size=10,
-#     hidden_size=20,
-#     num_layers=1,
+#     input_size=15,
+#     hidden_size=3,
+#     num_layers=2,
 #     bias=True,
 #     batch_first=False,
-#     dropout=0.0,
+#     dropout=0.5,
 #     bidirectional=False,
 # )
 
 torch.device('cpu')
 
 # rnn = torch.nn.LSTM(
-#     input_size=10,
-#     hidden_size=20,
-#     num_layers=1,
+#     input_size=3,
+#     hidden_size=3,
+#     num_layers=2,
 #     bias=True,
 #     batch_first=False,
 #     dropout=0.5,
@@ -30,11 +29,11 @@ torch.device('cpu')
 
 
 # rnn = torch.nn.GRU(
-#     input_size=10,
-#     hidden_size=5,
+#     input_size=3,
+#     hidden_size=3,
 #     num_layers=2,
 #     bias=True,
-#     batch_first=True,
+#     batch_first=False,
 #     dropout=0.5,
 #     bidirectional=False,
 # )
@@ -42,10 +41,10 @@ torch.device('cpu')
 class testModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.rnn = torch.nn.GRU(
-            input_size=10,
-            hidden_size=5,
-            num_layers=2,
+        self.rnn = torch.nn.LSTM(
+            input_size=5,
+            hidden_size=2,
+            num_layers=3,
             bias=True,
             batch_first=False,
             dropout=0.5,
@@ -56,62 +55,108 @@ class testModel(torch.nn.Module):
         return self.rnn(x)
 
 
+'''
+This is with bidirectional false:
+
+Initial input shape: torch.Size([10, 5, 5])
+RNN Attributes - Input size: 5, Hidden size: 2, Num layers: 3, Bidirectional: False, Batch first: False, Dropout: 0.0
+Output shape before any reshaping: torch.Size([10, 5, 2])
+Hidden state shapes: [torch.Size([5, 2]), torch.Size([5, 2]), torch.Size([5, 2])]
+
+
+Initial input shape: torch.Size([10, 5, 5])
+RNN Attributes - Input size: 5, Hidden size: 2, Num layers: 3, Bidirectional: True, Batch first: False, Dropout: 0.0
+Output shape before any reshaping: torch.Size([10, 5, 4])
+Hidden state shapes: [torch.Size([5, 2]), torch.Size([5, 2]), torch.Size([5, 2]), torch.Size([5, 2]), torch.Size([5, 2]), torch.Size([5, 2])]
+Output reshaped for bidirectional: torch.Size([10, 5, 2, 2])
+Output after summing directions: torch.Size([10, 5, 2])
+Traceback (most recent call last):
+
+'''
+
+
 rnn = testModel()
 rnn.eval()
 
 
-dummy_input = torch.randn(3, 5, 10)
+dummy_input = torch.randn(10, 5, 5)
+
+# Ensure dummy_input is a tensor
+if not isinstance(dummy_input, torch.Tensor):
+    raise TypeError(f"Expected dummy_input to be a tensor, but got {type(dummy_input)}")
+
 onnx_model_path = "rnn.onnx"
-torch.onnx.export(
-    rnn,
-    dummy_input,
-    onnx_model_path,
-    input_names=["input"],
-    output_names=["output"],
-    dynamic_axes={"input": {0: "batch_size", 1: "sequence_length"}},
-)
+# torch.onnx.export(
+#     rnn,
+#     dummy_input,
+#     onnx_model_path,
+#     opset_version=14,
+#     export_params=True,
+#     do_constant_folding=True,
+#     input_names=["input"],
+#     output_names=["output"],
+#     dynamic_axes={"input": {0: "batch_size", 1: "sequence_length"}},
+# )
+
+torch.onnx.export(rnn, dummy_input, onnx_model_path, 
+                  input_names=['input'], 
+                  output_names=['output', 'hidden'])
+
+# 
+# print("Model output pre conversion shape: ", output.shape)
+
+# Inspect and print the shapes of all tensors in the RNN's state_dict
 
 
-
-output, hidden = rnn.forward(dummy_input)
-print("Model output pre conversion shape: ", output.shape)
 # Load the ONNX model and convert it
 # Load the ONNX model and convert it to PyTorch
-model = onnx.load(onnx_model_path)
-onnx.checker.check_model(model)
+onnx_model = onnx.load(onnx_model_path)
+onnx.checker.check_model(onnx_model)
 
-converted_model = convert(model)
 
-def fix_device_issues(module):
-    for name, child in module.named_children():
-        if isinstance(child, torch.nn.Module):
-            fix_device_issues(child)
-        if isinstance(child, torch.Tensor):
-            # Ensure the device is correctly set
-            if not isinstance(child.device, torch.device):
-                # Set the device to the appropriate one (e.g., cpu or cuda)
-                child = child.to(torch.device('cpu'))
-            setattr(module, name, child)
-    return module
+for node in onnx_model.graph.node:
+    for input_name in node.input:
+        input_info = next((val for val in onnx_model.graph.input if val.name == input_name), None)
+        if input_info:
+            input_shape = [dim.dim_value for dim in input_info.type.tensor_type.shape.dim]
+            print(f"Input {input_name}: shape = {input_shape}")
+    
+    for output_name in node.output:
+        output_info = next((val for val in onnx_model.graph.output if val.name == output_name), None)
+        if output_info:
+            output_shape = [dim.dim_value for dim in output_info.type.tensor_type.shape.dim]
+            print(f"Output {output_name}: shape = {output_shape}")
 
-# Apply this function to the entire converted model
-# Apply the function to the entire converted model
-#converted_model = fix_device_issues(converted_model)
-#breakpoint()
-code = converted_model.code
-#print(code)
-filename = "rnnModel.py"
-with open(filename, 'w') as f:
-    f.write(code)
-    f.close()
+dummy_input_np = dummy_input.numpy()
+output, hidden = rnn.forward(dummy_input)
+state_dict = rnn.state_dict()
+for name, tensor in state_dict.items():
+    print(f"{name}: {tensor.shape}")
+# breakpoint()
 
+import onnxruntime
 try:
-    # Forward pass with dummy data
-    output, hidden = converted_model(dummy_input)
-    print("Model output:", output)
-    print("Output shape of converted model: ", output.shape)
-except Exception as e:
-    print(f"Error during model inference: {e}")
+    check_onnx_model(
+        onnx_model,
+        {"input": dummy_input_np},
+        atol_onnx_torch=10**-4,  # Increase tolerance
+        atol_torch_cpu_cuda=10**-5,  # Increase tolerance
+    )
+except AssertionError as e:
+    print("AssertionError: ort and torch outputs have significant difference")
+    # Compare the outputs
+    ort_session = onnxruntime.InferenceSession(onnx_model_path)
+    ort_inputs = {ort_session.get_inputs()[0].name: dummy_input_np}
+    ort_outputs = ort_session.run(None, ort_inputs)
+    
+    torch_output = rnn.forward(dummy_input)[0].detach().numpy()
+    
+    # print("ORT output:", ort_outputs)
+    # print("Torch output:", torch_output)
+    
+    # Print the differences
+    # for ort_output, torch_out in zip(ort_outputs, torch_output):
+    #     print("Difference:", np.abs(ort_output - torch_out))
 
 '''
 1) get torch model as code
